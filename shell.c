@@ -61,27 +61,31 @@ void free_tokens(char **tokens) {
     free(tokens); // then free the array
 }
 
-void builtInExit(char *command){
-    if(strcmp(command, "exit") == 0){
-        exit(EXIT_SUCCESS);
-    }
-}
-void builtInFg(char *command){
+void builtInExit(){
+    exit(EXIT_SUCCESS);
 }
 
-void nonBuiltIn(char **command ){
+void builtInFg(int background[], int* num_elements){
+    int recent_pid = background[*num_elements -1];
+    waitpid(recent_pid, NULL, 0); 
+}
+
+void nonBuiltIn(char **command, int background[], int* num_elements){
     //find the index of either the NULL or the ampersand
     int i = 0;
     while(command[i]!= NULL && strcmp(command[i], "&") != 0){
         i++;
     }
+    //the last character will either be NULL or the ampersand
     char *last = command[i];    
     int pid = fork();
 
+    //populate the args array with everything before NULL or the ampersand
     char *args[i+1];
     for(int j = 0; j < i; j++){
         args[j] = command[j];
     }
+    //NULL will always be the last element of the array
     args[i] = NULL;
    
     if(pid < 0){
@@ -92,9 +96,14 @@ void nonBuiltIn(char **command ){
             perror("execv failed");
         }
     }
-    else{    
+    else{
+        //only make the parent wait if there is no ampersand (foreground process)     
         if(last == NULL){
             waitpid(pid, NULL, 0);
+        }
+        else{
+            background[*num_elements] = pid;
+            *num_elements += 1;
         }
     }
     
@@ -104,6 +113,9 @@ int main(int argc, char **argv) {
     printf("%s", PROMPT);
     fflush(stdout);  // Display the prompt immediately
     char buffer[1024];
+    int background[MAX_BACKGROUND];
+    int curr_index = 0;
+    int* num_elements = &curr_index;
     while (fgets(buffer, 1024, stdin) != NULL) {
         char **command = tokenize(buffer, " \t\n");
 
@@ -112,14 +124,17 @@ int main(int argc, char **argv) {
         }
         else {
             // TODO: run commands
+            
+             
             if(strcmp(command[0], "exit") == 0){
-                builtInExit(command[0]);
+                builtInExit();
             }
             else if(strcmp(command[0], "fg") == 0){
+                builtInFg(background, num_elements);
             }
             else{
-                nonBuiltIn(command);
-                
+                nonBuiltIn(command, background, num_elements);
+                //printf("%d", *num_elements);
                 
             }
         }
