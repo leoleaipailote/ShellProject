@@ -61,12 +61,16 @@ void free_tokens(char **tokens) {
     free(tokens); // then free the array
 }
 
-void builtInExit(){
+void builtInExit(char** command){
+    //free all memory before exiting
+    free_tokens(command);
     exit(EXIT_SUCCESS);
 }
 
 void builtInFg(int background[], int* num_elements){
+    //obtain the pid of the most recent background process
     int recent_pid = background[*num_elements -1];
+    //make the parent wait for that process to finish
     waitpid(recent_pid, NULL, 0); 
 }
 
@@ -87,10 +91,12 @@ void nonBuiltIn(char **command, int background[], int* num_elements){
     }
     //NULL will always be the last element of the array
     args[i] = NULL;
-   
+
+   //if the fork failed, print an error message
     if(pid < 0){
         perror("fork failed");
     }
+    //if the child process is running, execute the file contained in args but print an error message if this is file does not exist
     else if(pid == 0){
         if(execv(args[0], args) < 0){
             perror("execv failed");
@@ -102,6 +108,7 @@ void nonBuiltIn(char **command, int background[], int* num_elements){
             waitpid(pid, NULL, 0);
         }
         else{
+            //store the PID of the child in the array of PIDs
             background[*num_elements] = pid;
             *num_elements += 1;
         }
@@ -113,8 +120,10 @@ int main(int argc, char **argv) {
     printf("%s", PROMPT);
     fflush(stdout);  // Display the prompt immediately
     char buffer[1024];
+    //initialize an array that can hold all the background processes
     int background[MAX_BACKGROUND];
     int curr_index = 0;
+    //keep a tracker of the current number of elements in the arry
     int* num_elements = &curr_index;
     while (fgets(buffer, 1024, stdin) != NULL) {
         char **command = tokenize(buffer, " \t\n");
@@ -125,16 +134,17 @@ int main(int argc, char **argv) {
         else {
             // TODO: run commands
             
-             
+             //run exit if the first command line argument is exit
             if(strcmp(command[0], "exit") == 0){
-                builtInExit();
+                builtInExit(command);
             }
+            //run fg if the first command line argument is fg
             else if(strcmp(command[0], "fg") == 0){
                 builtInFg(background, num_elements);
             }
+            //call the non-built in function if it's anything else
             else{
                 nonBuiltIn(command, background, num_elements);
-                //printf("%d", *num_elements);
                 
             }
         }
