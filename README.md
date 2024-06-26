@@ -24,7 +24,7 @@ When a user enters a non-built-in command (e.g., `/bin/ls -l`), the shell create
 Optionally, a user can indicate that a command should be executed as a *background* process by including the ampersand (`&`) character at the end of the command. For simplicity, the ampersand is assumed to be a separate token. For example:
 ```
 shell> /bin/ls -l -r &
-``
+```
 Commands without an ampersand are executed as *foreground* processes.
 
 In this project, I ensured that the shell handles the situation gracefully where invoking the specified executable fails.
